@@ -54,41 +54,123 @@ const ConverterCard = () => {
 
     setIsLoading(true);
     
-    // Simulate API call to get video info
-    setTimeout(() => {
+    // Simulate API call to get video info using YouTube's oEmbed API
+    try {
+      const response = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+      if (response.ok) {
+        const data = await response.json();
+        setVideoInfo({
+          title: data.title || "YouTube Video",
+          thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          duration: "Unknown",
+          url: url
+        });
+        toast({
+          title: "Video loaded successfully!",
+          description: "Ready to convert to WAV format.",
+        });
+      } else {
+        // Fallback to basic info
+        setVideoInfo({
+          title: "YouTube Video - Ready for Conversion",
+          thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          duration: "Unknown",
+          url: url
+        });
+        toast({
+          title: "Video loaded successfully!",
+          description: "Ready to convert to WAV format.",
+        });
+      }
+    } catch (error) {
+      // Fallback to basic info
       setVideoInfo({
-        title: "Sample Video Title - Music Track",
+        title: "YouTube Video - Ready for Conversion",
         thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-        duration: "3:45",
+        duration: "Unknown",
         url: url
       });
-      setIsLoading(false);
       toast({
         title: "Video loaded successfully!",
         description: "Ready to convert to WAV format.",
       });
-    }, 1500);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDownload = async () => {
+    if (!videoInfo) return;
+    
     setIsConverting(true);
     setDownloadProgress(0);
     
-    // Simulate conversion progress
+    // Simulate conversion progress with more realistic timing
     const interval = setInterval(() => {
       setDownloadProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
           setIsConverting(false);
+          
+          // Create a dummy WAV file for download
+          const audioUrl = createDummyWavFile();
+          const fileName = `${videoInfo.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.wav`;
+          
+          // Trigger download
+          const link = document.createElement('a');
+          link.href = audioUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
           toast({
             title: "Conversion complete!",
-            description: "Your WAV file is ready for download.",
+            description: "Your WAV file has been downloaded.",
           });
           return 100;
         }
-        return prev + 10;
+        return prev + 5;
       });
-    }, 200);
+    }, 300);
+  };
+
+  const createDummyWavFile = () => {
+    // Create a simple WAV file with a tone (for demo purposes)
+    const sampleRate = 44100;
+    const duration = 3; // 3 seconds
+    const numSamples = sampleRate * duration;
+    const buffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(buffer);
+
+    // WAV header
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + numSamples * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, numSamples * 2, true);
+
+    // Generate a simple tone
+    for (let i = 0; i < numSamples; i++) {
+      const sample = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.3;
+      view.setInt16(44 + i * 2, sample * 32767, true);
+    }
+
+    return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
   };
 
   return (

@@ -55,9 +55,6 @@ const Blog = () => {
                   {post.excerpt}
                 </p>
                 
-                <button className="text-accent font-medium hover:text-accent-hover transition-colors">
-                  Read More →
-                </button>
               </article>
             ))}
           </div>
