@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import VideoPreview from "./VideoPreview";
 import DownloadSection from "./DownloadSection";
+import { API_ENDPOINTS } from "@/lib/api";
 
 interface VideoInfo {
   title: string;
@@ -22,9 +23,9 @@ const ConverterCard = () => {
   const extractVideoId = (url: string): string | null => {
     const patterns = [
       /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-      /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+      /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
     ];
-    
+
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match) return match[1];
@@ -53,46 +54,54 @@ const ConverterCard = () => {
     }
 
     setIsLoading(true);
-    
-    // Simulate API call to get video info using YouTube's oEmbed API
+
+    // Call backend API to get video info
     try {
-      const response = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+      const response = await fetch(API_ENDPOINTS.VIDEO_INFO, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url }),
+      });
+
       if (response.ok) {
         const data = await response.json();
+        const duration = data.duration
+          ? `${Math.floor(data.duration / 60)}:${(data.duration % 60)
+              .toString()
+              .padStart(2, "0")}`
+          : "Unknown";
+
         setVideoInfo({
           title: data.title || "YouTube Video",
-          thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-          duration: "Unknown",
-          url: url
+          thumbnail:
+            data.thumbnail ||
+            `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          duration: duration,
+          url: url,
         });
         toast({
           title: "Video loaded successfully!",
           description: "Ready to convert to WAV format.",
         });
       } else {
-        // Fallback to basic info
-        setVideoInfo({
-          title: "YouTube Video - Ready for Conversion",
-          thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-          duration: "Unknown",
-          url: url
-        });
-        toast({
-          title: "Video loaded successfully!",
-          description: "Ready to convert to WAV format.",
-        });
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to load video");
       }
     } catch (error) {
+      console.error("Error loading video:", error);
       // Fallback to basic info
       setVideoInfo({
         title: "YouTube Video - Ready for Conversion",
         thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
         duration: "Unknown",
-        url: url
+        url: url,
       });
       toast({
-        title: "Video loaded successfully!",
-        description: "Ready to convert to WAV format.",
+        title: "Video loaded with limited info",
+        description: "Video loaded but some details may be unavailable.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -101,76 +110,84 @@ const ConverterCard = () => {
 
   const handleDownload = async () => {
     if (!videoInfo) return;
-    
+
     setIsConverting(true);
     setDownloadProgress(0);
-    
-    // Simulate conversion progress with more realistic timing
-    const interval = setInterval(() => {
-      setDownloadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsConverting(false);
-          
-          // Create a dummy WAV file for download
-          const audioUrl = createDummyWavFile();
-          const fileName = `${videoInfo.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.wav`;
-          
-          // Trigger download
-          const link = document.createElement('a');
-          link.href = audioUrl;
-          link.download = fileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          toast({
-            title: "Conversion complete!",
-            description: "Your WAV file has been downloaded.",
-          });
-          return 100;
-        }
-        return prev + 5;
+
+    try {
+      // Call backend API to convert and download
+      const response = await fetch(API_ENDPOINTS.CONVERT_TO_WAV, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: videoInfo.url }),
       });
-    }, 300);
-  };
 
-  const createDummyWavFile = () => {
-    // Create a simple WAV file with a tone (for demo purposes)
-    const sampleRate = 44100;
-    const duration = 3; // 3 seconds
-    const numSamples = sampleRate * duration;
-    const buffer = new ArrayBuffer(44 + numSamples * 2);
-    const view = new DataView(buffer);
-
-    // WAV header
-    const writeString = (offset: number, string: string) => {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Conversion failed");
       }
-    };
 
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + numSamples * 2, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeString(36, 'data');
-    view.setUint32(40, numSamples * 2, true);
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setDownloadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 500);
 
-    // Generate a simple tone
-    for (let i = 0; i < numSamples; i++) {
-      const sample = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.3;
-      view.setInt16(44 + i * 2, sample * 32767, true);
+      // Get the blob from response
+      const blob = await response.blob();
+
+      // Clear progress and set to 100%
+      clearInterval(progressInterval);
+      setDownloadProgress(100);
+
+      // Get filename from response headers or use default
+      const contentDisposition = response.headers.get("content-disposition");
+      let fileName = `${videoInfo.title
+        .replace(/[^a-z0-9]/gi, "_")
+        .toLowerCase()}.wav`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          fileName = filenameMatch[1];
+        }
+      }
+
+      // Create download link
+      const audioUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = audioUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up
+      URL.revokeObjectURL(audioUrl);
+
+      toast({
+        title: "Conversion complete!",
+        description: "Your WAV file has been downloaded.",
+      });
+    } catch (error) {
+      console.error("Download error:", error);
+      toast({
+        title: "Conversion failed",
+        description:
+          error.message || "Failed to convert video. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConverting(false);
+      setTimeout(() => setDownloadProgress(0), 2000); // Reset progress after 2 seconds
     }
-
-    return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
   };
 
   return (
@@ -181,8 +198,13 @@ const ConverterCard = () => {
             Online YouTube to WAV Converter
           </h1>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            YouTube to Wav Converter is a professional online tool that helps users convert and download high-quality WAV sound from copyright-free YouTube videos without limits. 
-            <span className="font-semibold text-foreground"> Only for personal & non-commercial use.</span>
+            YouTube to Wav Converter is a professional online tool that helps
+            users convert and download high-quality WAV sound from
+            copyright-free YouTube videos without limits.
+            <span className="font-semibold text-foreground">
+              {" "}
+              Only for personal & non-commercial use.
+            </span>
           </p>
         </div>
 
@@ -195,9 +217,9 @@ const ConverterCard = () => {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               className="url-input flex-1"
-              onKeyPress={(e) => e.key === 'Enter' && handleUrlSubmit()}
+              onKeyPress={(e) => e.key === "Enter" && handleUrlSubmit()}
             />
-            <Button 
+            <Button
               onClick={handleUrlSubmit}
               disabled={isLoading}
               className="download-btn sm:w-auto w-full"
@@ -215,8 +237,8 @@ const ConverterCard = () => {
 
           {/* Video Preview */}
           {videoInfo && (
-            <VideoPreview 
-              videoInfo={videoInfo} 
+            <VideoPreview
+              videoInfo={videoInfo}
               isConverting={isConverting}
               downloadProgress={downloadProgress}
             />

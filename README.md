@@ -1,4 +1,154 @@
-# Welcome to your Lovable project
+# YouTube to WAV Converter
+
+A professional online tool for converting YouTube videos to high-quality WAV audio files. Built with React, TypeScript, and Node.js.
+
+## ⚠️ Important Legal Notice
+
+This tool is provided for educational and personal use only. Users are responsible for:
+
+- Complying with applicable laws and YouTube's Terms of Service
+- Only downloading content they have the right to download
+- Respecting copyright and intellectual property rights
+
+## 🚀 Quick Setup
+
+### Option 1: Automated Setup (Recommended)
+
+**Windows:**
+
+```cmd
+setup.bat
+```
+
+**Linux/macOS:**
+
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+### Option 2: Manual Setup
+
+1. **Install Dependencies:**
+
+```bash
+# Install frontend dependencies
+npm install
+
+# Install backend dependencies
+cd server
+npm install
+cd ..
+```
+
+2. **Start the Application:**
+
+**Terminal 1 - Backend Server:**
+
+```bash
+cd server
+npm run dev
+```
+
+**Terminal 2 - Frontend:**
+
+```bash
+npm run dev
+```
+
+3. **Access the Application:**
+
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:3002
+
+## 🛠️ Development
+
+### Project Structure
+
+```
+├── src/                    # Frontend React application
+│   ├── components/         # React components
+│   ├── pages/             # Page components
+│   ├── hooks/             # Custom hooks
+│   └── lib/               # Utilities
+├── server/                # Backend Node.js server
+│   ├── server.js          # Main server file
+│   ├── package.json       # Backend dependencies
+│   └── README.md          # Backend documentation
+└── public/                # Static assets
+```
+
+### Technologies Used
+
+**Frontend:**
+
+- React 18
+- TypeScript
+- Tailwind CSS
+- Shadcn/ui Components
+- Vite
+
+**Backend:**
+
+- Node.js
+- Express
+- ytdl-core (YouTube downloader)
+- FFmpeg (audio conversion)
+
+## 📋 Features
+
+- ✅ YouTube URL validation and video info extraction
+- ✅ High-quality WAV audio conversion
+- ✅ Real-time conversion progress
+- ✅ Responsive design for all devices
+- ✅ Professional UI with modern components
+- ✅ Fast and reliable audio processing
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file in the `server` directory:
+
+```env
+PORT=3002
+NODE_ENV=development
+```
+
+### Frontend Configuration
+
+The frontend is configured to connect to the backend at `http://localhost:3002`. If you change the backend port, update the API URLs in:
+
+- `src/components/converter/ConverterCard.tsx`
+
+## 📦 Building for Production
+
+### Frontend
+
+```bash
+npm run build
+```
+
+### Backend
+
+```bash
+cd server
+npm start
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This project is for educational purposes only. Please respect YouTube's Terms of Service and applicable copyright laws.
+
+---
 
 ## Project info
 
