@@ -1,6 +1,6 @@
 // Configuration for frontend API endpoints
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3002";
+  import.meta.env.VITE_API_BASE_URL || "https://services-sage.vercel.app/";
 
 export const API_ENDPOINTS = {
   VIDEO_INFO: `${API_BASE_URL}/api/video-info`,
