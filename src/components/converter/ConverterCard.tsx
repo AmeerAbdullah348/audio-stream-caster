@@ -128,6 +128,7 @@ const ConverterCard = () => {
         const errorData = await response.json();
         throw new Error(errorData.error || "Conversion failed");
       }
+      console.log("Conversion started ", response);
 
       // Simulate progress for better UX
       const progressInterval = setInterval(() => {
